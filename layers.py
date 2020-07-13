@@ -1,0 +1,202 @@
+import math
+import torch 
+import torch.nn as nn
+from .activations import Mish
+
+class Flatten(nn.Module):
+    """
+    Flatten function, analoguous to the Keras homonym.
+    For a given tensor of dimension (N, C, H, W), returns a vector of dimension (N, C*H*W).
+    """
+
+    def __init__(self):
+        super().__init__()
+    
+    def forward(self, x):
+        return x.view(x.size(0), -1)
+
+
+class ConvBlock(nn.Module):
+    """
+    Implementation of a sequence of:
+    - A convolution layer
+    - A Batch Normalization layer
+    - An activation function (default being .activations.Mish)
+    """
+
+    def __init__(self, in_channels, out_channels, kernel_size, stride=1, 
+                 padding=0, dilation=1, groups=1, bias=True, padding_mode='zeros',
+                 activation=None,
+                 eps=1e-3, momentum=0.01):
+        """
+        - in_channels (int): Number of channels of the input.
+        - out_channels (int): Number of desired channels for the output. 
+        - kernel_size (int): The kernel size of the convolution layer.
+        - stride, padding, dilation, groups, bias, padding_mode: see the nn.Conv2d documentation of PyTorch.
+        - activation: A provided activation function. Default being Mish(). If the provided activation is a module, it has to be initialized (i.e activation=Mish() and not activation=Mish).
+        - eps, momentup: see the nn.BatchNorm2d document of PyTorch.
+        """
+
+        super().__init__()
+        
+        self.conv = nn.Conv2d(in_channels, out_channels, kernel_size, stride=stride,
+                              padding=padding, dilation=dilation, groups=groups,
+                              bias=bias, padding_mode=padding_mode)
+        self.bn = nn.BatchNorm2d(out_channels, eps=eps, momentum=momentum)
+        self.activation = Mish() if activation is None else activation
+    
+    def forward(self, x):
+        return self.activation(self.bn(self.conv(x)))
+
+
+class SEBlock(nn.Module):
+    """
+    Implementation of a squeeze and excitation layer.
+    """
+
+    def __init__(self, in_channels, ratio=16, activation=None):
+        """
+        - in_channels (int): Number of channels of the input.
+        - ratio (int): The number of times we increase the number of channels of the intermediate representation of the input. The smaller the better but the higher associated the computation cost. Default being 16 as suggested in the original paper.
+        - activation: A provided activation function. Default being Mish(). If the provided activation is a module, it has to be initialized (i.e activation=Mish() and not activation=Mish).
+        """
+
+        super().__init__()
+
+        mid_channels = math.ceil(in_channels / ratio)
+
+        self.global_pool = nn.AdaptiveAvgPool2d((1,1))
+        self.conv1 = nn.Conv2d(in_channels, mid_channels, 1, stride=1, padding=0)
+        self.activation = Mish() if activation is None else activation
+        self.conv2 = nn.Conv2d(mid_channels, in_channels, 1, stride=1, padding=0)
+
+    def forward(self, x):
+        return x * torch.sigmoid(self.conv2(self.activation(self.conv1(self.global_pool(x)))))
+
+
+class MBConv(nn.Module):
+    """
+    Implementation of a MBConv block, as used in EfficientNet.
+    """
+
+    def __init__(self, in_channels, out_channels, expend_ratio=2, kernel_size=(3,3), 
+                 stride=1, 
+                 padding=0, dilation=1, groups=1, bias=True, padding_mode="zeros",
+                 residual=True, se_ratio=16,
+                 activation=None,
+                 eps=1e-3, momentum=0.01):
+        """
+        - in_channels (int): Number of channels of the input.
+        - out_channels (int): Number of desired channels for the output. Note that is in_channels != out_channels, no residual connection can be applied.
+        - expend_ratio (int): The number of intermediary channels is computed using expend_ratio * in_channels. Default being 2 as in EfficientNet.
+        - kernel_size (int): The kernel size of the convolution layer.
+        - stride, padding, dilation, groups, bias, padding_mode: see the nn.Conv2d documentation of PyTorch.
+        - residual (bool):
+        - se_ration (int): The ratio of the Squeeze and Excitation layer. See the document of layers.SEBlock for more details.
+        - activation: A provided activation function. Default being Mish(). If the provided activation is a module, it has to be initialized (i.e activation=Mish() and not activation=Mish).
+        - eps, momentup: see the nn.BatchNorm2d document of PyTorch.
+        """
+        
+        super().__init__()
+
+        mid_channels = math.ceil(in_channels * expend_ratio)
+
+        self.activation = Mish() if activation is None else activation
+
+        self.conv_spatialwise = ConvBlock(in_channels, mid_channels, 1, 
+                                              stride=stride, padding=0, dilation=dilation, groups=groups, bias=bias, padding_mode=padding_mode, 
+                                              activation=self.activation,
+                                              eps=eps, momentum=momentum)
+        self.conv_channelwise = ConvBlock(mid_channels, mid_channels, 
+                                              kernel_size, stride=stride, padding=padding, dilation=dilation, groups=groups, bias=bias, padding_mode=padding_mode,
+                                              activation=self.activation,
+                                              eps=eps, momentum=momentum)
+        self.se = SqueezeExcite(mid_channels, ratio=se_ratio)
+        self.conv_spatialwise2 = nn.Sequential(
+            nn.Conv2d(mid_channels, out_channels, 1, stride=stride, padding=0, dilation=dilation, groups=groups, bias=bias, padding_mode=padding_mode),
+            nn.BatchNorm2d(out_channels, eps=eps, momentum=momentum)
+        )
+
+        self.residual = residual and (in_channels == out_channels) and (stride == 1)
+    
+    def forward(self, x):
+        y = self.conv_spatialwise(x)
+        y = self.conv_channelwise(y)
+        y = self.se(y)
+        y = self.conv_spatialwise2(y)
+
+        if self.residual:
+            y = y + x
+        
+        return y
+
+
+class MultiHeadedSpatialAttention(nn.Module):
+    """
+    Implementation of the multi-headed spatial attention mechanism for computer vision.
+    Note that the `groups` parameter plays the role of the number of heads.
+    """
+
+    def __init__(self, in_channels, out_channels, kernel_size, stride=1, padding=0, 
+                 dilation=1, groups=1, bias=True, padding_mode='zeros', position=True):
+        """
+        - in_channels (int): Number of channels of the input.
+        - out_channels (int): Number of desired channels for the output. 
+        - kernel_size (int): The kernel size of the convolution layer.
+        - stride, padding, dilation, bias, padding_mode: see the nn.Conv2d documentation of PyTorch.
+        - groups (int): Plays the role of the number of heads. Has to be a multiplier of in_channels and out_channels.
+        - position: Toggles the usage of relative positional encoding as described in the paper. The positional encoding is computed using a gaussian kernel.
+        """
+        super().__init__()
+
+        self.in_channels = in_channels
+        self.mid_channels = int(out_channels / groups)
+        self.out_channels = out_channels
+        self.kernel_size = kernel_size
+        self.groups = groups
+        self.position = position
+
+        self.query_op = nn.Conv2d(in_channels, out_channels, 1, stride=stride, groups=groups, bias=False)
+        self.key_op = nn.Conv2d(in_channels, out_channels, 1, stride=stride, groups=groups, bias=False)
+        self.value_op = nn.Conv2d(in_channels, out_channels, 1, stride=stride, groups=groups, bias=False)
+
+        self.unfolding = nn.Unfold(kernel_size, dilation=dilation, padding=padding, stride=stride)
+
+        if self.position:
+            X, Y = np.meshgrid(np.arange(kernel_size), np.arange(kernel_size), indexing='ij')
+            r = np.concatenate((X[:,:,None], Y[:,:,None]), 2) - np.array([int(kernel_size/2),int(kernel_size/2)])
+            r = np.exp(-np.linalg.norm(r, axis=2)) 
+            self.position_matrix = torch.Tensor(r)
+            
+        else:
+            self.position_matrix = torch.zeros(kernel_size, kernel_size)
+        
+        self.position_matrix = self.position_matrix.view(1, 1, 1, kernel_size*kernel_size, 1, 1)
+        self.position_matrix = nn.Parameter(self.position_matrix).requires_grad_(False)
+    
+    def forward(self, x):
+        query = self.query_op(x)
+        key = self.key_op(x)
+        value = self.value_op(x)
+
+        key = self.unfolding(key).view(x.size(0), 
+                                       self.groups, self.mid_channels, 
+                                       self.kernel_size*self.kernel_size, 
+                                       x.size(2), x.size(3))
+        value = self.unfolding(value).view(x.size(0), 
+                                           self.groups, self.mid_channels, 
+                                           self.kernel_size*self.kernel_size, 
+                                           x.size(2), x.size(3))
+        query = query.view(x.size(0),
+                           self.groups, self.mid_channels,
+                           1, 
+                           x.size(2), x.size(3))
+
+        similarity = (query * (key + self.position_matrix)).sum(2, keepdim=True).softmax(2)
+        output = (similarity * value).sum(3)
+
+        output = output.view(output.size(0), 
+                             output.size(1) * output.size(2),
+                             output.size(3), output.size(4))
+
+        return output
