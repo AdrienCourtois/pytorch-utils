@@ -1,7 +1,9 @@
 import math
 import torch 
 import torch.nn as nn
-from .activations import Mish
+from activations import Mish
+
+import numpy as np
 
 class Flatten(nn.Module):
     """
@@ -21,7 +23,7 @@ class ConvBlock(nn.Module):
     Implementation of a sequence of:
     - A convolution layer
     - A Batch Normalization layer
-    - An activation function (default being .activations.Mish)
+    - An activation function (default being activations.Mish)
     """
 
     def __init__(self, in_channels, out_channels, kernel_size, stride=1, 
@@ -33,7 +35,7 @@ class ConvBlock(nn.Module):
         - out_channels (int): Number of desired channels for the output. 
         - kernel_size (int): The kernel size of the convolution layer.
         - stride, padding, dilation, groups, bias, padding_mode: see the nn.Conv2d documentation of PyTorch.
-        - activation: A provided activation function. Default being Mish(). If the provided activation is a module, it has to be initialized (i.e activation=Mish() and not activation=Mish).
+        - activation: A provided activation function. Default being activations.Mish(). If the provided activation is a module, it has to be initialized (i.e activation=Mish() and not activation=Mish).
         - eps, momentup: see the nn.BatchNorm2d document of PyTorch.
         """
 
@@ -93,7 +95,7 @@ class MBConv(nn.Module):
         - stride, padding, dilation, groups, bias, padding_mode: see the nn.Conv2d documentation of PyTorch.
         - residual (bool):
         - se_ration (int): The ratio of the Squeeze and Excitation layer. See the document of layers.SEBlock for more details.
-        - activation: A provided activation function. Default being Mish(). If the provided activation is a module, it has to be initialized (i.e activation=Mish() and not activation=Mish).
+        - activation: A provided activation function. Default being activation.Mish(). If the provided activation is a module, it has to be initialized (i.e activation=Mish() and not activation=Mish).
         - eps, momentup: see the nn.BatchNorm2d document of PyTorch.
         """
         
