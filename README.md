@@ -88,8 +88,8 @@ model = nn.Sequential(
 ```
 
 ## References
-[1] Jie Hu, Li Shen, Samuel Albanie, Gang Sun, Enhua Wu, *Squeeze-and-Excitation Networks*, https://arxiv.org/abs/1709.01507
-[2] Mingxing Tan, Quoc V. Le, *EfficientNet: Rethinking Model Scaling for Convolutional Neural Networks*, https://arxiv.org/abs/1905.11946
-[3] Prajit Ramachandran, Niki Parmar, Ashish Vaswani, Irwan Bello, Anselm Levskaya, Jonathon Shlens, *Stand-Alone Self-Attention in Vision Models*, https://arxiv.org/abs/1906.05909
-[4] Diganta Misra, *Mish: A Self Regularized Non-Monotonic Neural Activation Function*, https://arxiv.org/abs/1908.08681
-[5] Prajit Ramachandran, Barret Zoph, Quoc V. Le, *Searching for Activation Functions*, https://arxiv.org/abs/1710.05941
+- [1] Jie Hu, Li Shen, Samuel Albanie, Gang Sun, Enhua Wu, *Squeeze-and-Excitation Networks*, https://arxiv.org/abs/1709.01507
+- [2] Mingxing Tan, Quoc V. Le, *EfficientNet: Rethinking Model Scaling for Convolutional Neural Networks*, https://arxiv.org/abs/1905.11946
+- [3] Prajit Ramachandran, Niki Parmar, Ashish Vaswani, Irwan Bello, Anselm Levskaya, Jonathon Shlens, *Stand-Alone Self-Attention in Vision Models*, https://arxiv.org/abs/1906.05909
+- [4] Diganta Misra, *Mish: A Self Regularized Non-Monotonic Neural Activation Function*, https://arxiv.org/abs/1908.08681
+- [5] Prajit Ramachandran, Barret Zoph, Quoc V. Le, *Searching for Activation Functions*, https://arxiv.org/abs/1710.05941
