@@ -1,7 +1,7 @@
 import math
 import torch 
 import torch.nn as nn
-from activations import Mish
+from .activations import Swish
 
 import numpy as np
 
@@ -23,7 +23,7 @@ class ConvBlock(nn.Module):
     Implementation of a sequence of:
     - A convolution layer
     - A Batch Normalization layer
-    - An activation function (default being activations.Mish)
+    - An activation function (default being activations.Swish)
     """
 
     def __init__(self, in_channels, out_channels, kernel_size, stride=1, 
@@ -45,7 +45,7 @@ class ConvBlock(nn.Module):
                               padding=padding, dilation=dilation, groups=groups,
                               bias=bias, padding_mode=padding_mode)
         self.bn = nn.BatchNorm2d(out_channels, eps=eps, momentum=momentum)
-        self.activation = Mish() if activation is None else activation
+        self.activation = Swish() if activation is None else activation
     
     def forward(self, x):
         return self.activation(self.bn(self.conv(x)))
@@ -60,7 +60,7 @@ class SEBlock(nn.Module):
         """
         - in_channels (int): Number of channels of the input.
         - ratio (int): The number of times we increase the number of channels of the intermediate representation of the input. The smaller the better but the higher associated the computation cost. Default being 16 as suggested in the original paper.
-        - activation: A provided activation function. Default being Mish(). If the provided activation is a module, it has to be initialized (i.e activation=Mish() and not activation=Mish).
+        - activation: A provided activation function. Default being Swish(). If the provided activation is a module, it has to be initialized (i.e activation=Mish() and not activation=Mish).
         """
 
         super().__init__()
@@ -69,7 +69,7 @@ class SEBlock(nn.Module):
 
         self.global_pool = nn.AdaptiveAvgPool2d((1,1))
         self.conv1 = nn.Conv2d(in_channels, mid_channels, 1, stride=1, padding=0)
-        self.activation = Mish() if activation is None else activation
+        self.activation = Swish() if activation is None else activation
         self.conv2 = nn.Conv2d(mid_channels, in_channels, 1, stride=1, padding=0)
 
     def forward(self, x):
@@ -95,7 +95,7 @@ class MBConv(nn.Module):
         - stride, padding, dilation, groups, bias, padding_mode: see the nn.Conv2d documentation of PyTorch.
         - residual (bool):
         - se_ration (int): The ratio of the Squeeze and Excitation layer. See the document of layers.SEBlock for more details.
-        - activation: A provided activation function. Default being activation.Mish(). If the provided activation is a module, it has to be initialized (i.e activation=Mish() and not activation=Mish).
+        - activation: A provided activation function. Default being activation.Swish(). If the provided activation is a module, it has to be initialized (i.e activation=Mish() and not activation=Mish).
         - eps, momentup: see the nn.BatchNorm2d document of PyTorch.
         """
         
@@ -103,7 +103,7 @@ class MBConv(nn.Module):
 
         mid_channels = math.ceil(in_channels * expend_ratio)
 
-        self.activation = Mish() if activation is None else activation
+        self.activation = Swish() if activation is None else activation
 
         self.conv_spatialwise = ConvBlock(in_channels, mid_channels, 1, 
                                               stride=stride, padding=0, dilation=dilation, groups=groups, bias=bias, padding_mode=padding_mode, 
