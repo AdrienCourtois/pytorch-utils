@@ -202,3 +202,32 @@ class MultiHeadedSpatialAttention(nn.Module):
                              output.size(3), output.size(4))
 
         return output
+
+
+class CoordConv2d(nn.Module):
+    """
+    Simple implementation of the CoordConv layer.
+    Note that the `groups` parameter may not work as you expect, as the position channels won't be add to each sub-group.
+    """
+    def __init__(self, in_channels, out_channels, kernel_size, **kwargs):
+        super().__init__()
+
+        self.conv = nn.Conv2d(in_channels+2, out_channels, kernel_size, **kwargs)
+
+    def cat(self, x):
+        N, C, H, W = x.size()
+
+        grid_y, grid_x = torch.meshgrid(torch.arange(H), torch.arange(W))
+        grid_x = 2 * (grid_x / (W-1.)) - 1
+        grid_y = 2 * (grid_y / (H-1.)) - 1
+
+        grid = torch.cat((grid_x.unsqueeze(0), grid_y.unsqueeze(0)), 0)
+        grid = grid.unsqueeze(0).repeat(N, 1, 1, 1)
+
+        if x.is_cuda:
+            grid = grid.cuda()
+
+        return torch.cat((x, grid), 1)
+
+    def forward(self, x):
+        return self.conv(self.cat(x))

@@ -44,6 +44,19 @@ model = nn.Sequential(
   Mish()
 )
 ```
+- CoordConv solution <br>
+*As presented in [6], this layer proposes to concatenate channels containing the position of each pixel to a given feature map, and to perform a normal convolution on top of that. This allows for tasks where the position is important to be performed with a CNN.*
+**Usage:**
+```python
+from pytorch-utils.layers import CoordConv2d
+
+model = nn.Sequential(
+  CoordConv(1, 64, 3, padding=1),
+  nn.ReLU(),
+  Flatten(),
+  nn.Linear(128, 1)
+)
+```
 - Flatten <br>
 *As in Keras but lacking in PyTorch, flattens an input image to put it in the formalism of a vector*<br>
 **Usage:**
