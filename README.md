@@ -106,3 +106,4 @@ model = nn.Sequential(
 - [3] Prajit Ramachandran, Niki Parmar, Ashish Vaswani, Irwan Bello, Anselm Levskaya, Jonathon Shlens, *Stand-Alone Self-Attention in Vision Models*, https://arxiv.org/abs/1906.05909
 - [4] Diganta Misra, *Mish: A Self Regularized Non-Monotonic Neural Activation Function*, https://arxiv.org/abs/1908.08681
 - [5] Prajit Ramachandran, Barret Zoph, Quoc V. Le, *Searching for Activation Functions*, https://arxiv.org/abs/1710.05941
+- [6] Rosanne Liu, Joel Lehman, Piero Molino, Felipe Petroski Such, Eric Frank, Alex Sergeev, Jason Yosinski, *An Intriguing Failing of Convolutional Neural Networks and the CoordConv Solution*, https://arxiv.org/abs/1807.03247
