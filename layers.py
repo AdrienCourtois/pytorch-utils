@@ -210,6 +210,9 @@ class CoordConv2d(nn.Module):
     Note that the `groups` parameter may not work as you expect, as the position channels won't be add to each sub-group.
     """
     def __init__(self, in_channels, out_channels, kernel_size, **kwargs):
+        """
+        See parameters of torch.nn.Conv2d
+        """
         super().__init__()
 
         self.conv = nn.Conv2d(in_channels+2, out_channels, kernel_size, **kwargs)
@@ -231,3 +234,38 @@ class CoordConv2d(nn.Module):
 
     def forward(self, x):
         return self.conv(self.cat(x))
+
+class GroupNorm2d(nn.Module):
+    """
+    Implementation of the group normalization layer.
+    It is advised to use this layer in coordination with Weight Standardization. 
+    """
+    def __init__(self, in_channels, G=32, eps=1e-5):
+        """
+        - in_channels (int): Number of channels of the input.
+        - G (int): Multiple of `in_channels`. Number of different groups of channels on which the statistics must be computed.
+        - eps (float): Minimum value to avoid division by 0. 
+        """
+        
+        self.G = G
+        self.eps = eps
+
+        self.gamma = nn.Parameter(torch.Tensor(1, in_channels, 1, 1))
+        self.beta = nn.Parameter(torch.Tensor(1, in_channels, 1, 1))
+
+        # initialize
+        self.gamma[...] = 1.
+        self.beta[...] = 0.
+    
+    def forward(self, x):
+        N, C, H, W = x.size()
+        x = x.view(N, self.G, C // self.G, H, W)
+        
+        mu = x.mean((2,3,4), keepdim=True)
+        sigma = x.std((2,3,4), keepdim=True)
+
+        x = (x - mu) / torch.sqrt(sigma**2 + self.eps)
+
+        x = x.view(N, C, H, W)
+
+        return x * self.gamma + self.beta

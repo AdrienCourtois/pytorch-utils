@@ -45,7 +45,7 @@ model = nn.Sequential(
 )
 ```
 - CoordConv solution <br>
-*As presented in [6], this layer proposes to concatenate channels containing the position of each pixel to a given feature map, and to perform a normal convolution on top of that. This allows for tasks where the position is important to be performed with a CNN.*
+*As presented in [6], this layer proposes to concatenate channels containing the position of each pixel to a given feature map, and to perform a normal convolution on top of that. This allows for tasks where the position is important to be performed with a CNN.*<br>
 **Usage:**
 ```python
 from pytorch-utils.layers import CoordConv2d
