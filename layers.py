@@ -235,37 +235,15 @@ class CoordConv2d(nn.Module):
     def forward(self, x):
         return self.conv(self.cat(x))
 
-class GroupNorm2d(nn.Module):
+class WSConv2d(nn.Conv2d):
     """
-    Implementation of the group normalization layer.
-    It is advised to use this layer in coordination with Weight Standardization. 
+    Implementation of the Weight Standardization layer, applied on a convolutional layer.
+    It is advised to use this layer in coordination with nn.GroupNorm.
     """
-    def __init__(self, in_channels, G=32, eps=1e-5):
-        """
-        - in_channels (int): Number of channels of the input.
-        - G (int): Multiple of `in_channels`. Number of different groups of channels on which the statistics must be computed.
-        - eps (float): Minimum value to avoid division by 0. 
-        """
-        
-        self.G = G
-        self.eps = eps
-
-        self.gamma = nn.Parameter(torch.Tensor(1, in_channels, 1, 1))
-        self.beta = nn.Parameter(torch.Tensor(1, in_channels, 1, 1))
-
-        # initialize
-        self.gamma[...] = 1.
-        self.beta[...] = 0.
-    
     def forward(self, x):
-        N, C, H, W = x.size()
-        x = x.view(N, self.G, C // self.G, H, W)
-        
-        mu = x.mean((2,3,4), keepdim=True)
-        sigma = x.std((2,3,4), keepdim=True)
+        mu = self.weight.mean((1,2,3), keepdim=True)
+        sigma = self.weight.std((1,2,3), keepdim=True)
 
-        x = (x - mu) / torch.sqrt(sigma**2 + self.eps)
+        w = (w - mu) / torch.sqrt(sigma**2 + 1e-10)
 
-        x = x.view(N, C, H, W)
-
-        return x * self.gamma + self.beta
+        return F.conv2d(x, w, self.bias, self.stride, self.padding, self.dilation, self.groups)

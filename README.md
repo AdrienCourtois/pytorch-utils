@@ -44,6 +44,20 @@ model = nn.Sequential(
   Mish()
 )
 ```
+- Weight Standardization [8] <br>
+*Possible improvement of batch normalization for small and big batches when used in coordination with Group Normalization [7], as suggested in [9].*<br>
+**Usage:**
+```python
+from pytorch-utils.layers import WSConv2d
+
+model = nn.Sequential(
+  WSConv2d(1, 64, 3, padding=1),
+  nn.GroupNorm(64),
+  nn.ReLU(),
+  Flatten(),
+  nn.Linear(128, 1)
+)
+```
 - CoordConv solution <br>
 *As presented in [6], this layer proposes to concatenate channels containing the position of each pixel to a given feature map, and to perform a normal convolution on top of that. This allows for tasks where the position is important to be performed with a CNN.*<br>
 **Usage:**
@@ -65,22 +79,6 @@ from pytorch-utils.layers import Flatten
 
 model = nn.Sequential(
   nn.Conv2d(1, 64, 3, padding=1),
-  nn.ReLU(),
-  Flatten(),
-  nn.Linear(128, 1)
-)
-```
-
-### Normalization functions
-- Group Normalization [7] <br>
-*Possible improvement of batch normalization for small and big batches when used in coordination with Weight Standardization [8], as suggested in [9].*<br>
-**Usage:**
-```python
-from pytorch-utils.layers import GroupNorm2d
-
-model = nn.Sequential(
-  nn.Conv2d(1, 64, 3, padding=1),
-  GroupNorm2d(64),
   nn.ReLU(),
   Flatten(),
   nn.Linear(128, 1)
