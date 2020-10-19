@@ -70,6 +70,23 @@ model = nn.Sequential(
   nn.Linear(128, 1)
 )
 ```
+
+### Normalization functions
+- Group Normalization [7] <br>
+*Possible improvement of batch normalization for small and big batches when used in coordination with Weight Standardization [8], as suggested in [9].*<br>
+**Usage:**
+```python
+from pytorch-utils.layers import GroupNorm2d
+
+model = nn.Sequential(
+  nn.Conv2d(1, 64, 3, padding=1),
+  GroupNorm2d(64),
+  nn.ReLU(),
+  Flatten(),
+  nn.Linear(128, 1)
+)
+```
+
 ### Activation functions
 - Mish [4] <br>
 *Implementation of Mish*<br>
@@ -107,3 +124,6 @@ model = nn.Sequential(
 - [4] Diganta Misra, *Mish: A Self Regularized Non-Monotonic Neural Activation Function*, https://arxiv.org/abs/1908.08681
 - [5] Prajit Ramachandran, Barret Zoph, Quoc V. Le, *Searching for Activation Functions*, https://arxiv.org/abs/1710.05941
 - [6] Rosanne Liu, Joel Lehman, Piero Molino, Felipe Petroski Such, Eric Frank, Alex Sergeev, Jason Yosinski, *An Intriguing Failing of Convolutional Neural Networks and the CoordConv Solution*, https://arxiv.org/abs/1807.03247
+- [7] Yuxin Wu, Kaiming He, *Group normalization*, Proceedings of the European conference on computer vision (ECCV), pages 3-19, 2018
+- [8] Siyuan Qiao, Huiyu Wang, Chenxi Liu, Wei Shen, Alan Yuille, *Micro-Batch Training with Batch-Channel Normalization and Weight Standardization, https://arxiv.org/abs/1903.10520
+- [9] Alexander Kolesnikov, Lucas Beyer, Xiaohua Zhai, Joan Puigcerver, Jessica Yung, Sylvain Gelly, Neil Houlsby, *Big Transfer (BiT): General Visual Representation Learning*, https://arxiv.org/abs/1912.11370
