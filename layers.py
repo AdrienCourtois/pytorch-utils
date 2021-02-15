@@ -244,6 +244,31 @@ class WSConv2d(nn.Conv2d):
         mu = self.weight.mean((1,2,3), keepdim=True)
         sigma = self.weight.std((1,2,3), keepdim=True)
 
-        w = (w - mu) / torch.sqrt(sigma**2 + 1e-10)
+        w = (self.weight - mu) / torch.sqrt(sigma**2 + 1e-10)
 
         return F.conv2d(x, w, self.bias, self.stride, self.padding, self.dilation, self.groups)
+
+class SWSConv2d(nn.Module):
+    """
+    Implementation of the Scaled Weight Standardization layer, applied on a convolutional layer.
+    """
+    def __init__(self, in_channels, out_channels, kernel_size, activation="relu", **kwargs):
+        self.conv = nn.Conv2d(in_channels, out_channels, kernel_size, **kwargs)
+        self.gamma = None
+
+        if activation == "relu":
+            self.gamma = np.sqrt(2) / np.sqrt(1 - 1/np.pi)
+        elif activation == "swish":
+            self.gamma = 1. / 0.63
+        elif activation == "mish":
+            self.gamma = 1. / 0.56
+        else: 
+            raise Exception(f"Activation {activation} not implemented.")
+
+    def foward(self, x):
+        mu = self.conv.weight.mean((1,2,3), keepdim=True)
+        sigma = self.conv.weight.std((1,2,3), keepdim=True)
+
+        w = self.gamma * (self.conv.weight - mu) / torch.sqrt(sigma**2 + 1e-10) / np.sqrt(np.prod(self.conv.weight.size()[1:]))
+
+        return F.conv2d(x, w, self.conv.bias, self.conv.stride, self.conv.padding, self.conv.dilation, self.conv.groups)

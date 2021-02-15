@@ -58,6 +58,23 @@ model = nn.Sequential(
   nn.Linear(128, 1)
 )
 ```
+- Scaled Weight Standardization [10] <br>
+*Used to make sure the output of a convolutional layer follows a centered reduced gaussian distribution when the input does too. It is the first step to a network Batch-Normalization-free.*
+**Usage:**
+```python
+from pytorch-utils.layers import SWSConv2d
+
+model = nn.Sequential(
+  nn.Conv2d(1, 64, 3, padding=1),
+  nn.BatchNorm2d(64),
+  nn.ReLU(),
+  SWSConv2d(1, 64, 3, padding=1, activation="relu"), # you have to specify the preceding activation
+  nn.ReLU(),
+  Flatten(),
+  nn.Linear(128, 1)
+)
+```
+
 - CoordConv solution <br>
 *As presented in [6], this layer proposes to concatenate channels containing the position of each pixel to a given feature map, and to perform a normal convolution on top of that. This allows for tasks where the position is important to be performed with a CNN.*<br>
 **Usage:**
@@ -125,3 +142,4 @@ model = nn.Sequential(
 - [7] Yuxin Wu, Kaiming He, *Group normalization*, Proceedings of the European conference on computer vision (ECCV), pages 3-19, 2018
 - [8] Siyuan Qiao, Huiyu Wang, Chenxi Liu, Wei Shen, Alan Yuille, *Micro-Batch Training with Batch-Channel Normalization and Weight Standardization, https://arxiv.org/abs/1903.10520
 - [9] Alexander Kolesnikov, Lucas Beyer, Xiaohua Zhai, Joan Puigcerver, Jessica Yung, Sylvain Gelly, Neil Houlsby, *Big Transfer (BiT): General Visual Representation Learning*, https://arxiv.org/abs/1912.11370
+- [10] Andrew Brock, Soham De, Samuel L. Smith, *Characterizing signal propagation to close the performance gap in unnormalized ResNets*, https://arxiv.org/abs/2101.08692
