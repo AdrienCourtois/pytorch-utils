@@ -253,6 +253,8 @@ class SWSConv2d(nn.Module):
     Implementation of the Scaled Weight Standardization layer, applied on a convolutional layer.
     """
     def __init__(self, in_channels, out_channels, kernel_size, activation="relu", **kwargs):
+        super().__init__()
+
         self.conv = nn.Conv2d(in_channels, out_channels, kernel_size, **kwargs)
         self.gamma = None
 
@@ -265,7 +267,7 @@ class SWSConv2d(nn.Module):
         else: 
             raise Exception(f"Activation {activation} not implemented.")
 
-    def foward(self, x):
+    def forward(self, x):
         mu = self.conv.weight.mean((1,2,3), keepdim=True)
         sigma = self.conv.weight.std((1,2,3), keepdim=True)
 
