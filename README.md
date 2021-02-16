@@ -79,7 +79,7 @@ model = nn.Sequential(
 )
 ```
 
-- Parameter-Free Layer Normalization <br>
+- Parameter-Free Layer Normalization [11] <br>
 *In the case of images, one cannot usually afford to learn HW weights for each normalization layer. We propose a parameter-free layer normalization layer easier to instantiate than PyTorch's original one.*<br>
 **Usage:**
 ```python
@@ -92,7 +92,7 @@ model = nn.Sequential(
 )
 ```
 
-- Layer Normalization parametrized along channels <br>
+- Layer Normalization [11] parametrized along channels <br>
 *We propose this mix of Parameter-Free Layer Normalization with the parametrization of Batch Normalization, where the weights are learned along the channel axis.*<br>
 **Usage:**
 ```python
@@ -101,6 +101,19 @@ from pytorch-utils.layers import CLayerNorm
 model = nn.Sequential(
   nn.Conv2d(1, 64, 3, padding=1),
   CLayerNorm(64),
+  nn.ReLU()
+)
+```
+
+- Power Normalization [12] along channels <br>
+*So not to store CHW parameters for the running second-order moment, we propose to only do the computation along the channel axis, as per the batch normalization.* <br>
+**Usage:**
+```python
+from pytorch-utils.layers import CPowerNorm2d
+
+model = nn.Sequential(
+  nn.Conv2d(1, 64, 3, padding=1),
+  CPowerNorm2d(64),
   nn.ReLU()
 )
 ```
@@ -173,3 +186,5 @@ model = nn.Sequential(
 - [8] Siyuan Qiao, Huiyu Wang, Chenxi Liu, Wei Shen, Alan Yuille, *Micro-Batch Training with Batch-Channel Normalization and Weight Standardization, https://arxiv.org/abs/1903.10520
 - [9] Alexander Kolesnikov, Lucas Beyer, Xiaohua Zhai, Joan Puigcerver, Jessica Yung, Sylvain Gelly, Neil Houlsby, *Big Transfer (BiT): General Visual Representation Learning*, https://arxiv.org/abs/1912.11370
 - [10] Andrew Brock, Soham De, Samuel L. Smith, *Characterizing signal propagation to close the performance gap in unnormalized ResNets*, https://arxiv.org/abs/2101.08692
+- [11] Jimmy Lei Ba, Jamie Ryan Kiros, Geoffrey E. Hinto, *Layer Normalization*, https://arxiv.org/abs/1607.06450
+- [12] Sheng Shen, Zhewei Yao, Amir Gholami, Michael W. Mahoney, Kurt Keutzer, *PowerNorm: Rethinking Batch Normalization in Transformers*, https://arxiv.org/abs/2003.07845
