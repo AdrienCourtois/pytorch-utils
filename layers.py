@@ -242,35 +242,79 @@ class WSConv2d(nn.Conv2d):
     """
     def forward(self, x):
         mu = self.weight.mean((1,2,3), keepdim=True)
-        sigma = self.weight.std((1,2,3), keepdim=True)
+        std = self.weight.std((1,2,3), keepdim=True)
 
-        w = (self.weight - mu) / torch.sqrt(sigma**2 + 1e-10)
+        w = (self.weight - mu) / torch.sqrt(std**2 + 1e-10)
 
         return F.conv2d(x, w, self.bias, self.stride, self.padding, self.dilation, self.groups)
 
-class SWSConv2d(nn.Module):
+class SWSConv2d(nn.Conv2d):
     """
     Implementation of the Scaled Weight Standardization layer, applied on a convolutional layer.
     """
-    def __init__(self, in_channels, out_channels, kernel_size, activation="relu", **kwargs):
-        super().__init__()
+    def __init__(self, in_channels, out_channels, kernel_size, activation="relu", gamma=None, **kwargs):
+        super().__init__(in_channels, out_channels, kernel_size, **kwargs)
 
-        self.conv = nn.Conv2d(in_channels, out_channels, kernel_size, **kwargs)
-        self.gamma = None
+        self.gamma = gamma
 
-        if activation == "relu":
-            self.gamma = np.sqrt(2) / np.sqrt(1 - 1/np.pi)
-        elif activation == "swish":
-            self.gamma = 1. / 0.63
-        elif activation == "mish":
-            self.gamma = 1. / 0.56
-        else: 
-            raise Exception(f"Activation {activation} not implemented.")
+        if self.gamma is None:
+            if activation == "relu":
+                self.gamma = np.sqrt(2) / np.sqrt(1 - 1/np.pi)
+            elif activation == "swish":
+                self.gamma = 1. / 0.63
+            elif activation == "mish":
+                self.gamma = 1. / 0.56
+            elif activation == "linear":
+                self.gamma = 1.
+            else: 
+                raise Exception(f"Activation {activation} not implemented.")
 
     def forward(self, x):
-        mu = self.conv.weight.mean((1,2,3), keepdim=True)
-        sigma = self.conv.weight.std((1,2,3), keepdim=True)
+        mu = self.weight.mean((1,2,3), keepdim=True)
+        std = self.weight.std((1,2,3), keepdim=True)
 
-        w = self.gamma * (self.conv.weight - mu) / torch.sqrt(sigma**2 + 1e-10) / np.sqrt(np.prod(self.conv.weight.size()[1:]))
+        w = self.gamma * (self.weight - mu) / torch.sqrt(std**2 + 1e-10) / np.sqrt(np.prod(self.weight.size()[1:]))
 
-        return F.conv2d(x, w, self.conv.bias, self.conv.stride, self.conv.padding, self.conv.dilation, self.conv.groups)
+        return F.conv2d(x, w, self.bias, self.stride, self.padding, self.dilation, self.groups)
+
+class PFLayerNorm(nn.Module):
+    """
+    Parameter-free layer normalization layer, more suited when dealing with images.
+    """
+    def __init__(self, dims=(2,3)):
+        super().__init__()
+
+        self.dims = dims 
+    
+    def forward(self, x):
+        mean = x.mean(dims, keepdim=True)
+        std = x.std(dims, keepdim=True)
+
+        return (x - mean) / torch.sqrt(std**2 + 1e-10)
+
+class CLayerNorm(nn.Module):
+    """
+    A layer normalization layer where you only learn weights for each channel independantly, similarly to Batch Normalization.
+    """
+    def __init__(self, in_channels, dims=(2,3)):
+        super().__init__()
+
+        self.layernorm = PFLayerNorm(dims=dims)
+        self.weight = torch.Tensor(1,in_channels)
+        self.bias = torch.Tensor(1,in_channels)
+
+        for d in dims:
+            self.weight = self.weight.unsqueeze(d)
+            self.bias = self.bias.unsqueeze(d)
+        
+        self.init()
+    
+    def init(self):
+        nn.init.ones_(self.weight)
+        nn.init.zeros_(self.bias)
+
+    def forward(self, x):
+        x = self.layernorm(x)
+        x = self.weight * x + self.bias
+
+        return x

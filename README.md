@@ -16,6 +16,7 @@ model = nn.Sequential(
   SEBlock()
 )
 ```
+
 - MBConv <br>
 *As used in EfficientNet [2], decorrelates the channel and the spatial processing in convolutions* <br>
 **Usage:**
@@ -28,6 +29,7 @@ model = nn.Sequential(
   MBConv(64, 64, activation=nn.ReLU())
 )
 ```
+
 - Multi-Headed Self-Attention <br>
 *As presented in [3], this layer enables to leverage the attention mechanism for computer vision-related tasks* <br>
 **Usage:**
@@ -44,6 +46,7 @@ model = nn.Sequential(
   Mish()
 )
 ```
+
 - Weight Standardization [8] <br>
 *Possible improvement of batch normalization for small and big batches when used in coordination with Group Normalization [7], as suggested in [9].*<br>
 **Usage:**
@@ -58,6 +61,7 @@ model = nn.Sequential(
   nn.Linear(128, 1)
 )
 ```
+
 - Scaled Weight Standardization [10] <br>
 *Used to make sure the output of a convolutional layer follows a centered reduced gaussian distribution when the input does too. It is the first step to a network Batch-Normalization-free.*
 **Usage:**
@@ -72,6 +76,32 @@ model = nn.Sequential(
   nn.ReLU(),
   Flatten(),
   nn.Linear(128, 1)
+)
+```
+
+- Parameter-Free Layer Normalization <br>
+*In the case of images, one cannot usually afford to learn HW weights for each normalization layer. We propose a parameter-free layer normalization layer easier to instantiate than PyTorch's original one.*
+**Usage:**
+```python
+from pytorch-utils.layers import PFLayerNorm
+
+model = nn.Sequential(
+  nn.Conv2d(1, 64, 3, padding=1),
+  PFLayerNorm(),
+  nn.ReLU()
+)
+```
+
+- Layer Normalization parametrized along channels <br>
+*We propose this mix of Parameter-Free Layer Normalization with the parametrization of Batch Normalization, where the weights are learned along the channel axis.*
+**Usage:**
+```python
+from pytorch-utils.layers import CLayerNorm
+
+model = nn.Sequential(
+  nn.Conv2d(1, 64, 3, padding=1),
+  CLayerNorm(64),
+  nn.ReLU()
 )
 ```
 
