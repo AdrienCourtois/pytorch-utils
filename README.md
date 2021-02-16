@@ -63,7 +63,7 @@ model = nn.Sequential(
 ```
 
 - Scaled Weight Standardization [10] <br>
-*Used to make sure the output of a convolutional layer follows a centered reduced gaussian distribution when the input does too. It is the first step to a network Batch-Normalization-free.*
+*Used to make sure the output of a convolutional layer follows a centered reduced gaussian distribution when the input does too. It is the first step to a network Batch-Normalization-free.*<br>
 **Usage:**
 ```python
 from pytorch-utils.layers import SWSConv2d
@@ -80,7 +80,7 @@ model = nn.Sequential(
 ```
 
 - Parameter-Free Layer Normalization <br>
-*In the case of images, one cannot usually afford to learn HW weights for each normalization layer. We propose a parameter-free layer normalization layer easier to instantiate than PyTorch's original one.*
+*In the case of images, one cannot usually afford to learn HW weights for each normalization layer. We propose a parameter-free layer normalization layer easier to instantiate than PyTorch's original one.*<br>
 **Usage:**
 ```python
 from pytorch-utils.layers import PFLayerNorm
@@ -93,7 +93,7 @@ model = nn.Sequential(
 ```
 
 - Layer Normalization parametrized along channels <br>
-*We propose this mix of Parameter-Free Layer Normalization with the parametrization of Batch Normalization, where the weights are learned along the channel axis.*
+*We propose this mix of Parameter-Free Layer Normalization with the parametrization of Batch Normalization, where the weights are learned along the channel axis.*<br>
 **Usage:**
 ```python
 from pytorch-utils.layers import CLayerNorm
