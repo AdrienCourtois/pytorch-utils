@@ -26,26 +26,51 @@ class ConvBlock(nn.Module):
     - An activation function (default being activations.Swish)
     """
 
-    def __init__(self, in_channels, out_channels, kernel_size, stride=1, 
-                 padding=0, dilation=1, groups=1, bias=True, padding_mode='zeros',
-                 activation=None,
-                 eps=1e-3, momentum=0.01):
+    def __init__(
+        self, 
+        in_channels, 
+        out_channels, 
+        kernel_size, 
+        stride=1,
+        padding=0, 
+        dilation=1, 
+        groups=1, 
+        bias=True, 
+        padding_mode='zeros',
+        activation=None,
+        eps=1e-3, 
+        momentum=0.01
+    ):
         """
         - in_channels (int): Number of channels of the input.
         - out_channels (int): Number of desired channels for the output. 
         - kernel_size (int): The kernel size of the convolution layer.
         - stride, padding, dilation, groups, bias, padding_mode: see the nn.Conv2d documentation of PyTorch.
-        - activation: A provided activation function. Default being activations.Mish(). If the provided activation is a module, it has to be initialized (i.e activation=Mish() and not activation=Mish).
+        - activation: A provided activation function. Default being nn.Identity.
         - eps, momentup: see the nn.BatchNorm2d document of PyTorch.
         """
 
         super().__init__()
         
-        self.conv = nn.Conv2d(in_channels, out_channels, kernel_size, stride=stride,
-                              padding=padding, dilation=dilation, groups=groups,
-                              bias=bias, padding_mode=padding_mode)
-        self.bn = nn.BatchNorm2d(out_channels, eps=eps, momentum=momentum)
-        self.activation = Swish() if activation is None else activation
+        self.conv = nn.Conv2d(
+            in_channels, 
+            out_channels, 
+            kernel_size, 
+            stride=stride,
+            padding=padding, 
+            dilation=dilation, 
+            groups=groups,
+            bias=bias, 
+            padding_mode=padding_mode
+        )
+        
+        self.bn = nn.BatchNorm2d(
+            out_channels, 
+            eps=eps, 
+            momentum=momentum
+        )
+
+        self.activation = nn.Identity() if activation is None else activation()
     
     def forward(self, x):
         return self.activation(self.bn(self.conv(x)))
@@ -68,12 +93,29 @@ class SEBlock(nn.Module):
         mid_channels = math.ceil(in_channels / ratio)
 
         self.global_pool = nn.AdaptiveAvgPool2d((1,1))
-        self.conv1 = nn.Conv2d(in_channels, mid_channels, 1, stride=1, padding=0)
+        self.conv1 = nn.Conv2d(
+            in_channels, 
+            mid_channels, 
+            1, 
+            stride=1, 
+            padding=0
+        )
         self.activation = Swish() if activation is None else activation
-        self.conv2 = nn.Conv2d(mid_channels, in_channels, 1, stride=1, padding=0)
+        self.conv2 = nn.Conv2d(
+            mid_channels, 
+            in_channels, 
+            1, 
+            stride=1, 
+            padding=0
+        )
 
     def forward(self, x):
-        return x * torch.sigmoid(self.conv2(self.activation(self.conv1(self.global_pool(x)))))
+        x_mean = self.global_pool(x)
+        x_squeeze = self.activation(self.conv1(x_mean))
+        x_excite = self.conv2(x_squeeze)
+        A = torch.sigmoid(x_excite)
+
+        return x * A
 
 
 class MBConv(nn.Module):
@@ -81,12 +123,24 @@ class MBConv(nn.Module):
     Implementation of a MBConv block, as used in EfficientNet.
     """
 
-    def __init__(self, in_channels, out_channels, expend_ratio=2, kernel_size=(3,3), 
-                 stride=1, 
-                 padding=0, dilation=1, groups=1, bias=True, padding_mode="zeros",
-                 residual=True, se_ratio=16,
-                 activation=None,
-                 eps=1e-3, momentum=0.01):
+    def __init__(
+        self, 
+        in_channels, 
+        out_channels, 
+        expend_ratio=2, 
+        kernel_size=(3,3), 
+        stride=1,
+        padding=0, 
+        dilation=1, 
+        groups=1, 
+        bias=True, 
+        padding_mode="zeros",
+        residual=True, 
+        se_ratio=16,
+        activation=None,
+        eps=1e-3,
+        momentum=0.01
+    ):
         """
         - in_channels (int): Number of channels of the input.
         - out_channels (int): Number of desired channels for the output. Note that is in_channels != out_channels, no residual connection can be applied.
@@ -105,27 +159,51 @@ class MBConv(nn.Module):
 
         self.activation = Swish() if activation is None else activation
 
-        self.conv_spatialwise = ConvBlock(in_channels, mid_channels, 1, 
-                                              stride=stride, padding=0, dilation=dilation, groups=groups, bias=bias, padding_mode=padding_mode, 
-                                              activation=self.activation,
-                                              eps=eps, momentum=momentum)
-        self.conv_channelwise = ConvBlock(mid_channels, mid_channels, 
-                                              kernel_size, stride=stride, padding=padding, dilation=dilation, groups=groups, bias=bias, padding_mode=padding_mode,
-                                              activation=self.activation,
-                                              eps=eps, momentum=momentum)
+        self.conv_channelwise = ConvBlock(
+            in_channels, 
+            mid_channels, 
+            1, 
+            groups=groups, 
+            bias=False, 
+            activation=self.activation,
+            eps=eps, 
+            momentum=momentum
+        )
+
+        self.conv_spatialwise = ConvBlock(
+            mid_channels, 
+            mid_channels,
+            kernel_size, 
+            stride=stride, 
+            padding=padding,
+            dilation=dilation, 
+            groups=mid_channels, 
+            bias=False, 
+            padding_mode=padding_mode,
+            activation=self.activation, 
+            eps=eps, 
+            momentum=momentum
+        )
+
         self.se = SEBlock(mid_channels, ratio=se_ratio)
-        self.conv_spatialwise2 = nn.Sequential(
-            nn.Conv2d(mid_channels, out_channels, 1, stride=stride, padding=0, dilation=dilation, groups=groups, bias=bias, padding_mode=padding_mode),
-            nn.BatchNorm2d(out_channels, eps=eps, momentum=momentum)
+        
+        self.conv_channelwise2 = ConvBlock(
+            mid_channels, 
+            out_channels,
+            1,
+            groups=groups,
+            bias=False,
+            eps=eps, 
+            momentum=momentum
         )
 
         self.residual = residual and (in_channels == out_channels) and (stride == 1)
     
     def forward(self, x):
-        y = self.conv_spatialwise(x)
-        y = self.conv_channelwise(y)
+        y = self.conv_channelwise(x)
+        y = self.conv_spatialwise(y)
         y = self.se(y)
-        y = self.conv_spatialwise2(y)
+        y = self.conv_channelwise2(y)
 
         if self.residual:
             y = y + x
