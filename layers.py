@@ -85,7 +85,7 @@ class SEBlock(nn.Module):
         """
         - in_channels (int): Number of channels of the input.
         - ratio (int): The number of times we increase the number of channels of the intermediate representation of the input. The smaller the better but the higher associated the computation cost. Default being 16 as suggested in the original paper.
-        - activation: A provided activation function. Default being Swish(). If the provided activation is a module, it has to be initialized (i.e activation=Mish() and not activation=Mish).
+        - activation: A provided activation function. Default being Swish.
         """
 
         super().__init__()
@@ -100,7 +100,7 @@ class SEBlock(nn.Module):
             stride=1, 
             padding=0
         )
-        self.activation = Swish() if activation is None else activation
+        self.activation = Swish() if activation is None else activation()
         self.conv2 = nn.Conv2d(
             mid_channels, 
             in_channels, 
@@ -157,7 +157,7 @@ class MBConv(nn.Module):
 
         mid_channels = math.ceil(in_channels * expend_ratio)
 
-        self.activation = Swish() if activation is None else activation
+        self.activation = Swish if activation is None else activation
 
         self.conv_channelwise = ConvBlock(
             in_channels, 
