@@ -113,7 +113,7 @@ class MBConv(nn.Module):
                                               kernel_size, stride=stride, padding=padding, dilation=dilation, groups=groups, bias=bias, padding_mode=padding_mode,
                                               activation=self.activation,
                                               eps=eps, momentum=momentum)
-        self.se = SqueezeExcite(mid_channels, ratio=se_ratio)
+        self.se = SEBlock(mid_channels, ratio=se_ratio)
         self.conv_spatialwise2 = nn.Sequential(
             nn.Conv2d(mid_channels, out_channels, 1, stride=stride, padding=0, dilation=dilation, groups=groups, bias=bias, padding_mode=padding_mode),
             nn.BatchNorm2d(out_channels, eps=eps, momentum=momentum)
@@ -287,8 +287,8 @@ class PFLayerNorm(nn.Module):
         self.dims = dims 
     
     def forward(self, x):
-        mean = x.mean(dims, keepdim=True)
-        std = x.std(dims, keepdim=True)
+        mean = x.mean(self.dims, keepdim=True)
+        std = x.std(self.dims, keepdim=True)
 
         return (x - mean) / torch.sqrt(std**2 + 1e-10)
 
@@ -299,23 +299,19 @@ class CLayerNorm(nn.Module):
     def __init__(self, in_channels, dims=(2,3)):
         super().__init__()
 
+        self.dims = dims
+
         self.layernorm = PFLayerNorm(dims=dims)
-        self.weight = torch.Tensor(1,in_channels)
-        self.bias = torch.Tensor(1,in_channels)
+        self.gamma = nn.Parameter(torch.ones(1, in_channels))
+        self.beta = nn.Parameter(torch.zeros(1, in_channels))
 
         for d in dims:
-            self.weight = self.weight.unsqueeze(d)
-            self.bias = self.bias.unsqueeze(d)
-        
-        self.init()
-    
-    def init(self):
-        nn.init.ones_(self.weight)
-        nn.init.zeros_(self.bias)
+            self.gamma.unsqueeze_(d)
+            self.beta.unsqueeze_(d)
 
     def forward(self, x):
         x = self.layernorm(x)
-        x = self.weight * x + self.bias
+        x = self.gamma * x + self.beta
 
         return x
 
