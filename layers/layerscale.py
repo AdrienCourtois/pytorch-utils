@@ -3,9 +3,6 @@ from typing import Optional
 from .einsum import einsum
 
 class LayerScale(nn.Module):
-    in_channels: int
-    layerscale_init: Optional[float] = 0.1
-
     def __init__(self, in_channels: int, layerscale_init: Optional[float]=0.1):
         super().__init__()
 
